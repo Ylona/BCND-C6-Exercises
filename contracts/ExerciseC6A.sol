@@ -14,6 +14,9 @@ contract ExerciseC6A {
 
     address private contractOwner;                  // Account used to deploy contract
     mapping(address => UserProfile) userProfiles;   // Mapping for storing user profiles
+    bool private operational;
+    uint constant M = 2;
+    address[] multiCalls = new address[](0);
 
 
 
@@ -33,6 +36,7 @@ contract ExerciseC6A {
                                 public 
     {
         contractOwner = msg.sender;
+        operational = true;
     }
 
     /********************************************************************************************/
@@ -51,6 +55,11 @@ contract ExerciseC6A {
         _;
     }
 
+    modifier requireControlFlowTrue(){
+        require(operational, "Contract is currently not operational");
+        _;
+    }
+
     /********************************************************************************************/
     /*                                       UTILITY FUNCTIONS                                  */
     /********************************************************************************************/
@@ -65,6 +74,7 @@ contract ExerciseC6A {
                                 address account
                             )
                             external
+                            requireControlFlowTrue
                             view
                             returns(bool)
     {
@@ -83,6 +93,7 @@ contract ExerciseC6A {
                                 )
                                 external
                                 requireContractOwner
+                                requireControlFlowTrue
     {
         require(!userProfiles[account].isRegistered, "User is already registered.");
 
@@ -90,6 +101,45 @@ contract ExerciseC6A {
                                                 isRegistered: true,
                                                 isAdmin: isAdmin
                                             });
+    }
+
+    /**
+* @dev Get operating status of contract
+    *
+    * @return A bool that is the current operating status
+    */
+    function isOperational()
+    public
+    view
+    returns(bool)
+    {
+        return operational;
+    }
+
+
+    function setOperatingStatus
+    (
+        bool mode
+    )
+    external
+    {
+        require(mode != operational, "New mode must be different from existing mode");
+        require(userProfiles[msg.sender].isAdmin, "Caller is not an admin");
+
+        bool isDuplicate = false;
+        for(uint c=0; c<multiCalls.length; c++) {
+            if (multiCalls[c] == msg.sender) {
+                isDuplicate = true;
+                break;
+            }
+        }
+        require(!isDuplicate, "Caller has already called this function.");
+
+        multiCalls.push(msg.sender);
+        if (multiCalls.length >= M) {
+            operational = mode;
+            multiCalls = new address[](0);
+        }
     }
 }
 
