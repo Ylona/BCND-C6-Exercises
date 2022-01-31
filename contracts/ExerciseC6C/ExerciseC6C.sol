@@ -25,6 +25,7 @@ contract ExerciseC6C {
 
     address private contractOwner;              // Account used to deploy contract
     mapping(string => Profile) employees;      // Mapping for storing employees
+    mapping(address => uint256) private authorizedContracts;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -37,9 +38,9 @@ contract ExerciseC6C {
     *      The deploying account becomes contractOwner
     */
     constructor
-                                (
-                                ) 
-                                public 
+    (
+    )
+    public
     {
         contractOwner = msg.sender;
     }
@@ -64,20 +65,25 @@ contract ExerciseC6C {
     /*                                       UTILITY FUNCTIONS                                  */
     /********************************************************************************************/
 
-   /**
-    * @dev Check if an employee is registered
+    /**
+     * @dev Check if an employee is registered
     *
     * @return A bool that indicates if the employee is registered
-    */   
+    */
     function isEmployeeRegistered
-                            (
-                                string id
-                            )
-                            external
-                            view
-                            returns(bool)
+    (
+        string id
+    )
+    external
+    view
+    returns (bool)
     {
         return employees[id].isRegistered;
+    }
+
+    modifier isCallerAuthorized(){
+        require(authorizedContracts[msg.sender] == 1, "Caller is not contract owner");
+        _;
     }
 
     /********************************************************************************************/
@@ -85,47 +91,46 @@ contract ExerciseC6C {
     /********************************************************************************************/
 
     function registerEmployee
-                                (
-                                    string id,
-                                    bool isAdmin,
-                                    address wallet
-                                )
-                                external
-                                requireContractOwner
+    (
+        string id,
+        bool isAdmin,
+        address wallet
+    )
+    external
+    requireContractOwner
     {
         require(!employees[id].isRegistered, "Employee is already registered.");
 
         employees[id] = Profile({
-                                        id: id,
-                                        isRegistered: true,
-                                        isAdmin: isAdmin,
-                                        sales: 0,
-                                        bonus: 0,
-                                        wallet: wallet
-                                });
+        id : id,
+        isRegistered : true,
+        isAdmin : isAdmin,
+        sales : 0,
+        bonus : 0,
+        wallet : wallet
+        });
     }
 
     function getEmployeeBonus
-                            (
-                                string id
-                            )
-                            external
-                            view
-                            requireContractOwner
-                            returns(uint256)
+    (
+        string id
+    )
+    external
+    view
+    requireContractOwner
+    returns (uint256)
     {
         return employees[id].bonus;
     }
 
     function updateEmployee
-                                (
-                                    string id,
-                                    uint256 sales,
-                                    uint256 bonus
+    (
+        string id,
+        uint256 sales,
+        uint256 bonus
 
-                                )
-                                internal
-                                requireContractOwner
+    )
+    external
     {
         require(employees[id].isRegistered, "Employee is not registered.");
 
@@ -134,39 +139,12 @@ contract ExerciseC6C {
 
     }
 
-    function calculateBonus
-                            (
-                                uint256 sales
-                            )
-                            internal
-                            view
-                            requireContractOwner
-                            returns(uint256)
-    {
-        if (sales < 100) {
-            return sales.mul(5).div(100);
-        }
-        else if (sales < 500) {
-            return sales.mul(7).div(100);
-        }
-        else {
-            return sales.mul(10).div(100);
-        }
+    function authorizeContract(address contractAddress) external requireContractOwner {
+        authorizedContracts[contractAddress] = 1;
     }
 
-    function addSale
-                                (
-                                    string id,
-                                    uint256 amount
-                                )
-                                external
-                                requireContractOwner
-    {
-        updateEmployee(
-                        id,
-                        amount,
-                        calculateBonus(amount)
-        );
+    function deauthorizeContract(address contractAddress) internal requireContractOwner{
+        delete authorizedContracts[contractAddress];
     }
 
 
